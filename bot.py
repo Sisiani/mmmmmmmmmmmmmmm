@@ -261,10 +261,7 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_text_handler))
 
     logger.info("Bot started")
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling()
-    await app.idle()
+    await app.run_polling()
 
 if __name__ == "__main__":
     import asyncio
