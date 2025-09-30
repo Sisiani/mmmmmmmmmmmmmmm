@@ -1,3 +1,4 @@
+# bot.py
 import logging
 import os
 import json
@@ -19,7 +20,7 @@ from telegram.ext import (
 
 # ============== CONFIG ==============
 TOKEN = os.environ.get("TOKEN", "8311865694:AAHrQDLSJcFKOztBj8X2PtMafk7U7AML0Uo")
-ADMIN_ID = int(os.environ.get("ADMIN_ID", "7374971382"))
+ADMIN_ID = int(os.environ.get("ADMIN_ID", "7374971382"))  # آیدی عددی ادمین
 GROUP_ID = int(os.environ.get("GROUP_ID", "-1003086390705"))
 CHANNEL_LINK = os.environ.get("CHANNEL_LINK", "https://t.me/NEURANAcademy")
 
@@ -41,6 +42,7 @@ BTN_SUPPORT = "🛠 پشتیبانی"
 
 BTN_HAVE_ACCOUNT = "از قبل حساب دارم"
 BTN_NEED_ACCOUNT = "حساب ندارم ساخت حساب"
+
 # ============== LOGGER ==============
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -75,35 +77,34 @@ def add_or_update_user(user_id, username=None, exchange=None, uid=None, approved
     save_users(users)
 
 # ============== Handlers ==============
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    add_or_update_user(user.id, username=user.username or "")
+def build_main_keyboard():
     keyboard = [
         [KeyboardButton(BTN_JOIN_ACADEMY)],
         [KeyboardButton(BTN_SUBS), KeyboardButton(BTN_BONUS)],
         [KeyboardButton(BTN_PROFILE), KeyboardButton(BTN_SUPPORT)],
     ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    add_or_update_user(user.id, username=user.username or "")
+    reply_markup = build_main_keyboard()
     await update.message.reply_text("به ربات Neuran Academy خوش آمدید 🚀\nلطفا یکی از گزینه‌ها را انتخاب کنید:", reply_markup=reply_markup)
-    # admin inline option
+
+    # اگر ادمین است، یک دکمهٔ ادمینی (Inline) نمایش بده
     if user.id == ADMIN_ID:
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton("📣 ارسال پیام همگانی", callback_data="admin_broadcast")]])
-        await update.message.reply_text("منوی ادمین:", reply_markup=kb)
+        admin_kb = InlineKeyboardMarkup([[InlineKeyboardButton("📣 ارسال پیام همگانی", callback_data="admin_broadcast")]])
+        await update.message.reply_text("منوی ادمین:", reply_markup=admin_kb)
 
-# send exchange inline choices
-async def send_exchange_choices(chat_id, bot, message=None):
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton(name, callback_data=f"exchange:{name}")] for name in EXCHANGE_LINKS.keys()])
-    if message:
-        await bot.send_message(chat_id, "لطفا یکی از صرافی‌ها را انتخاب کنید:", reply_markup=kb)
-    else:
-        return kb
-
+# وقتی کاربر متنی می‌فرستد
 async def message_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message is None or update.message.text is None:
+        return
     text = update.message.text.strip()
     user = update.effective_user
-    uid = user.id
+    tg_id = user.id
 
-    # admin broadcast flow
+    # اگر ادمین در حالت ارسال همگانی است
     if user.id == ADMIN_ID and context.user_data.get("waiting_broadcast"):
         broadcast_text = text
         users = load_users()
@@ -118,32 +119,34 @@ async def message_text_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(f"پیام برای {sent} کاربر ارسال شد ✅")
         return
 
-    # collecting UID state
+    # اگر در حالت انتظار UID هستیم
     if context.user_data.get("waiting_for_uid"):
         exchange = context.user_data.get("exchange", "صرافی")
         entered_uid = text
-        add_or_update_user(uid, username=user.username or "", exchange=exchange, uid=entered_uid, approved=False)
+        add_or_update_user(tg_id, username=user.username or "", exchange=exchange, uid=entered_uid, approved=False)
 
         group_msg = (
             f"درخواست عضویت جدید 🔔\n"
             f"صرافی: {exchange}\n"
             f"UID: {entered_uid}\n"
             f"یوزر: @{user.username if user.username else 'ندارد'}\n"
-            f"تله آیدی: {uid}"
+            f"تله آیدی: {tg_id}"
         )
-        # send group message with approve button (callback includes target id)
+        # دکمهٔ تایید برای گروه (callback شامل آیدی تلگرام هدف)
         try:
-            approve_kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ تایید کاربر", callback_data=f"approve:{uid}")]])
+            approve_kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ تایید کاربر", callback_data=f"approve:{tg_id}")]])
             await context.bot.send_message(GROUP_ID, group_msg, reply_markup=approve_kb)
             await update.message.reply_text("UID شما برای بررسی به ادمین ارسال شد. منتظر تایید بمانید.")
         except Exception as e:
             await update.message.reply_text("خطا در ارسال به گروه بررسی. لطفا مطمئن شوید ربات عضو گروه است و GROUP_ID درست است.")
             logger.exception(e)
+
         context.user_data["waiting_for_uid"] = False
         return
 
-    # menu handling
+    # منوی اصلی -- دکمه‌ها
     if text == BTN_SUBS:
+        # نمایش گزینه‌های صرافی به صورت inline (callback برای انتخاب صرافی)
         kb = InlineKeyboardMarkup([[InlineKeyboardButton(name, callback_data=f"exchange:{name}")] for name in EXCHANGE_LINKS.keys()])
         await update.message.reply_text("لطفا یکی از صرافی‌ها را انتخاب کنید:", reply_markup=kb)
         return
@@ -154,27 +157,31 @@ async def message_text_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     if text == BTN_BONUS:
-        bonus_text = ("🧑‍💻👩‍💻 برای ورود به کانال  VIP NEURANAcademy\n\n"
-                      "🔹ابتدا حسابتونو با یکی از لینک های زیر در صرافی انتخابیتون بسازید \n\n"
-                      "🤑سپس حسابتونو حداقل 100 دلار شارژ کنید و در مرحله بعد UID تونو بفرستید\n\n"
-                      "❗️نکته : برای ورود به کانال ViP اگر در یکی از این صرافی ها از قبل اکانت دارید ، باید با لینکی که گذاشتیم اکانت جدید بسازید")
+        # متن دقیقِ ارسالی شما
+        bonus_text = (
+            "🧑‍💻👩‍💻 برای ورود به کانال  VIP NEURANAcademy\n\n"
+            "🔹ابتدا حسابتونو با یکی از لینک های زیر در صرافی انتخابیتون بسازید \n\n"
+            "🤑سپس حسابتونو حداقل 100 دلار شارژ کنید و در مرحله بعد UID تونو بفرستید\n\n"
+            "❗️نکته : برای ورود به کانال ViP اگر در یکی از این صرافی ها از قبل اکانت دارید ، باید با لینکی که گذاشتیم اکانت جدید بسازید"
+        )
         kb = InlineKeyboardMarkup([[InlineKeyboardButton(name, url=link)] for name, link in EXCHANGE_LINKS.items()])
         await update.message.reply_text(bonus_text, reply_markup=kb)
         return
 
     if text == BTN_JOIN_ACADEMY:
         users = load_users()
-        entry = users.get(str(uid), {})
+        entry = users.get(str(tg_id), {})
         if entry.get("approved"):
             kb = InlineKeyboardMarkup([[InlineKeyboardButton("پیوستن به کانال VIP", url=CHANNEL_LINK)]])
             await update.message.reply_text("تبریک! شما تایید شده‌اید — برای ورود روی دکمه زیر بزنید:", reply_markup=kb)
         else:
-            await update.message.reply_text("شما هنوز واجد شرایط نیستید ❌\nلطفاً ابتدا اشتراک تهیه کنید.")
+            # متن دقیقا طبق خواستهٔ شما
+            await update.message.reply_text("شما هنوز واحد شرایط نیستید لطفاً ابتدا اشتراک تهیه کنید")
         return
 
     if text == BTN_PROFILE:
         users = load_users()
-        entry = users.get(str(uid))
+        entry = users.get(str(tg_id))
         if not entry:
             await update.message.reply_text("اطلاعاتی برای شما ثبت نشده است. لطفاً ابتدا دریافت اشتراک را انجام دهید.")
             return
@@ -186,13 +193,31 @@ async def message_text_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(f"📊 مشخصات حساب شما:\nصرافی: {exchange}\nUID: {user_uid}\nوضعیت: {approved_text}", reply_markup=kb)
         return
 
+    # گزینه‌های بعد از انتخاب صرافی (Reply keyboard)
+    if text == BTN_HAVE_ACCOUNT:
+        exchange = context.user_data.get("exchange", "صرافی")
+        context.user_data["waiting_for_uid"] = True
+        await update.message.reply_text(f"لطفا UID صرافی ({exchange}) خود را وارد کنید تا ادمین تایید کند و عضویت در کانال VIP برای شما آزاد شود.")
+        return
+
+    if text == BTN_NEED_ACCOUNT:
+        # نمایش لینک‌های صرافی (باز کردن لینک)
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton(name, url=link)] for name, link in EXCHANGE_LINKS.items()])
+        await update.message.reply_text("برای ساخت حساب یکی از لینک‌های زیر را باز کنید:", reply_markup=kb)
+        return
+
+    # fallback
     await update.message.reply_text("متوجه نشدم. لطفاً از منوی اصلی یکی از گزینه‌ها را انتخاب کنید یا /start را بزنید.")
 
+# ============== CallbackQuery handler ==============
 async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if query is None or query.data is None:
+        return
     await query.answer()
-    data = query.data or ""
+    data = query.data
 
+    # انتخاب صرافی
     if data.startswith("exchange:"):
         exchange = data.split(":", 1)[1]
         context.user_data["exchange"] = exchange
@@ -200,25 +225,15 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
             await query.edit_message_text(f"صرافی انتخاب شده: {exchange}")
         except Exception:
             pass
-        kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton(BTN_HAVE_ACCOUNT, callback_data="have_account")],
-            [InlineKeyboardButton(BTN_NEED_ACCOUNT, callback_data="need_account")],
-        ])
-        await query.message.reply_text("آیا از قبل در این صرافی حساب دارید یا خیر؟", reply_markup=kb)
+        # حالا دو دکمهٔ اصلی به صورت ReplyKeyboard برای کاربر نشان داده شوند
+        keyboard = [
+            [KeyboardButton(BTN_HAVE_ACCOUNT), KeyboardButton(BTN_NEED_ACCOUNT)]
+        ]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await query.message.reply_text("آیا از قبل در این صرافی حساب دارید یا خیر؟", reply_markup=reply_markup)
         return
 
-    if data == "have_account":
-        exchange = context.user_data.get("exchange", "صرافی")
-        context.user_data["waiting_for_uid"] = True
-        await query.message.reply_text(f"لطفا UID صرافی ({exchange}) خود را وارد کنید تا ادمین تایید کند و عضویت در کانال VIP برای شما آزاد شود.")
-        return
-
-    if data == "need_account":
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton(name, url=link)] for name, link in EXCHANGE_LINKS.items()])
-        await query.message.reply_text("برای ساخت حساب یکی از لینک‌های زیر را باز کنید:", reply_markup=kb)
-        return
-
-    # admin broadcast
+    # ادمین درخواست ارسال پیام همگانی
     if data == "admin_broadcast":
         if query.from_user.id != ADMIN_ID:
             await query.answer("شما دسترسی لازم را ندارید.", show_alert=True)
@@ -227,11 +242,11 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
         await query.message.reply_text("لطفا متن پیام همگانی را ارسال کنید. (متن را در همین چت ارسال کنید)")
         return
 
-    # approve button in group (callback_data: approve:<target_id>)
+    # دکمهٔ تایید در گروه (callback_data = approve:<telegram_id>)
     if data.startswith("approve:"):
-        # only admin can approve
+        # فقط ادمین می‌تواند این را اجرا کند
         if query.from_user.id != ADMIN_ID:
-            await query.answer("شما دسترسی لازم را ندارید", show_alert=True)
+            await query.answer("شما دسترسی لازم را ندارید.", show_alert=True)
             return
         parts = data.split(":", 1)
         if len(parts) != 2:
@@ -247,22 +262,28 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
         try:
             kb = InlineKeyboardMarkup([[InlineKeyboardButton("پیوستن به کانال VIP", url=CHANNEL_LINK)]])
             await context.bot.send_message(target_id, "تبریک 🎉 حساب شما توسط ادمین تایید شد. اکنون میتوانید به کانال VIP بپیوندید 🚀", reply_markup=kb)
-            await query.edit_message_reply_markup(reply_markup=None)
+            # حذف یا غیرفعال کردن دکمه در پیام گروه (حذف reply_markup)
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
             await query.message.reply_text(f"کاربر {target_id} تایید شد و اطلاع‌رسانی ارسال شد ✅")
         except Exception as e:
             await query.message.reply_text("خطا در ارسال پیام به کاربر. ممکن است کاربر ربات را استارت نکرده باشد.")
             logger.exception(e)
         return
 
-async def main():
+# ============== MAIN ==============
+def main():
     app = Application.builder().token(TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(callback_query_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_text_handler))
 
     logger.info("Bot started")
-    await app.run_polling()
+    # اجرای هم‌زمان polling (همان سبک اولیه)
+    app.run_polling()
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
