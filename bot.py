@@ -133,7 +133,7 @@ async def message_text_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         # send group message with approve button (callback includes target id)
         try:
-            approve_kb = InlineKeyboardMarkup([[InlineKeyboardButton(\"✅ تایید کاربر\", callback_data=f\"approve:{uid}\")]])
+            approve_kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ تایید کاربر", callback_data=f"approve:{uid}")]])
             await context.bot.send_message(GROUP_ID, group_msg, reply_markup=approve_kb)
             await update.message.reply_text("UID شما برای بررسی به ادمین ارسال شد. منتظر تایید بمانید.")
         except Exception as e:
