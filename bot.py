@@ -152,7 +152,7 @@ async def message_text_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     if text == BTN_SUPPORT:
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton("مراجعه به پشتیبانی", url="https://t.me/AIireza_1383")]])
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton("مراجعه به پشتیبانی", url="https://t.me/e11_S33")]])
         await update.message.reply_text("برای پشتیبانی روی دکمه زیر بزنید:", reply_markup=kb)
         return
 
