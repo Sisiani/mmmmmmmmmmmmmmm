@@ -22,7 +22,7 @@ from telegram.ext import (
 TOKEN = os.environ.get("TOKEN", "8311865694:AAHrQDLSJcFKOztBj8X2PtMafk7U7AML0Uo")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "191196976"))  # آیدی عددی ادمین
 GROUP_ID = int(os.environ.get("GROUP_ID", "-1003015735672"))
-CHANNEL_LINK = os.environ.get("CHANNEL_LINK", "https://t.me/+W_qe4duHZB9mMDVk")
+CHANNEL_LINK = os.environ.get("CHANNEL_LINK", "https://t.me/+oiQXD3OP35YzMDQ0")
 
 EXCHANGE_LINKS = {
     "XT": "https://www.xtfarsi.net/en/accounts/register?ref=1133",
