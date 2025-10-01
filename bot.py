@@ -20,8 +20,8 @@ from telegram.ext import (
 
 # ============== CONFIG ==============
 TOKEN = os.environ.get("TOKEN", "8311865694:AAHrQDLSJcFKOztBj8X2PtMafk7U7AML0Uo")
-ADMIN_ID = int(os.environ.get("ADMIN_ID", "7374971382"))  # آیدی عددی ادمین
-GROUP_ID = int(os.environ.get("GROUP_ID", "-1003086390705"))
+ADMIN_ID = int(os.environ.get("ADMIN_ID", "191196976"))  # آیدی عددی ادمین
+GROUP_ID = int(os.environ.get("GROUP_ID", "--1003015735672"))
 CHANNEL_LINK = os.environ.get("CHANNEL_LINK", "https://t.me/NEURANAcademy")
 
 EXCHANGE_LINKS = {
