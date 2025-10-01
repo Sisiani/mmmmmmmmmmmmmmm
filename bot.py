@@ -189,7 +189,7 @@ async def message_text_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         user_uid = entry.get("uid", "-")
         approved = entry.get("approved", False)
         approved_text = "تایید شده ✅" if approved else "تایید نشده ❌\nشما باید اول اشتراک تهیه کنید."
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton("پشتیبانی", url="https://t.me/AIireza_1383")]])
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton("پشتیبانی", url="https://t.me/e11_S33")]])
         await update.message.reply_text(f"📊 مشخصات حساب شما:\nصرافی: {exchange}\nUID: {user_uid}\nوضعیت: {approved_text}", reply_markup=kb)
         return
 
