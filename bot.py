@@ -233,7 +233,7 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
         await query.message.reply_text("آیا از قبل در این صرافی حساب دارید یا خیر؟", reply_markup=reply_markup)
         return
 
-    # ادمین درخواست ارسال پیام همگانی
+    # ادمین درخواست ارسال پیام همگان
     if data == "admin_broadcast":
         if query.from_user.id != ADMIN_ID:
             await query.answer("شما دسترسی لازم را ندارید.", show_alert=True)
